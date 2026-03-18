@@ -33,6 +33,7 @@ class HttpClient():
         retry=retry_if_exception(_is_retryable),
     )
     def _fetch(self, method: str, url, params=None, json=None, **kwargs):
+        time.sleep(1.3)
         resp = self.session.request(
             method=method,
             url=url,
