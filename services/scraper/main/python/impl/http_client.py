@@ -1,40 +1,38 @@
 import time
 import requests
 from typing import Optional, Dict
-from requests.exceptions import ConnectionError, HTTPError, Timeout
+from requests.exceptions import RequestException
 from tenacity import (
     retry,
     stop_after_attempt,
     wait_exponential,
+    retry_if_exception,
 )
+
+
+def _is_retryable(exception):
+    retry_status_codes = (500, 502, 429)
+    if not isinstance(exception, RequestException):
+        return False
+    if exception.response.status_code not in retry_status_codes:
+        return False
+    return True
 
 
 class HttpClient():
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0',
-            'Accept': 'application/json',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Content-Type': 'application/json;charset=utf-8',
-            'X-CSRF-Token': 'ihtroQukudElQnMLFlIYKM7SVByGMOdjB8FydNRjDoafAsCvh1pEhqBqSyCdQJtiCZ6mxjfSDICq_iJOQ1T0Tw',
-            'Origin': 'https://www.onlinetours.ru',
-            'Connection': 'keep-alive',
-            'Referer': 'https://www.onlinetours.ru/',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin',
-            'Priority': 'u=0',
-            'Pragma': 'no-cache',
-            'Cache-Control': 'no-cache',
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64;'\
+            'rv:139.0) Gecko/20100101 Firefox/139.0',
         })
 
     @retry(
         stop=stop_after_attempt(10),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(_is_retryable),
     )
     def _fetch(self, method: str, url, params=None, json=None, **kwargs):
-        time.sleep(2.1)
         resp = self.session.request(
             method=method,
             url=url,
